@@ -9,10 +9,10 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - MODEL_DIR=/app/wine_quality_preprocessing
+      - MODEL_DIR=/app/heart_disease_preprocessing
       - MODEL_PATH=/app/model.pkl
     volumes:
-      - ./wine_quality_preprocessing:/app/wine_quality_preprocessing
+      - ./heart_disease_preprocessing:/app/heart_disease_preprocessing
     networks:
       - ml-network
     restart: unless-stopped

@@ -142,15 +142,15 @@ MODEL_INFO = Info(
 # ============================================================
 # SIMULATED METRICS COLLECTOR
 # ============================================================
-MODEL_NAME = "wine_quality_rf"
+MODEL_NAME = "heart_disease_rf"
 MODEL_VERSION = "1.0"
-CLASS_LABELS = ['low', 'medium', 'high']
+CLASS_LABELS = ['no_disease', 'disease']
 FEATURE_NAMES = [
-    'fixed_acidity', 'volatile_acidity', 'citric_acid',
-    'residual_sugar', 'chlorides', 'free_sulfur_dioxide',
-    'total_sulfur_dioxide', 'density', 'pH', 'sulphates',
-    'alcohol', 'wine_type', 'total_acidity',
-    'free_sulfur_ratio', 'alcohol_density_ratio'
+    'age', 'sex', 'cp', 'trestbps', 'chol', 'fbs',
+    'restecg', 'thalach', 'exang', 'oldpeak', 'slope',
+    'ca', 'thal', 'heart_rate_reserve',
+    'cholesterol_age_ratio', 'bp_chol_interaction',
+    'exercise_risk', 'age_sex_risk'
 ]
 
 start_time = time.time()
@@ -171,7 +171,7 @@ def simulate_prediction():
     # Simulasi prediksi kelas
     predicted_class = random.choices(
         CLASS_LABELS, 
-        weights=[0.1, 0.7, 0.2],  # distribusi realistis
+        weights=[0.55, 0.45],  # distribusi realistis heart disease
         k=1
     )[0]
     PREDICTIONS_BY_CLASS.labels(
@@ -215,11 +215,11 @@ def update_drift_metrics():
 def update_feature_stats():
     """Simulasi statistik fitur input."""
     feature_stats = {
-        'fixed_acidity': {'mean': 7.2, 'std': 1.3},
-        'volatile_acidity': {'mean': 0.34, 'std': 0.16},
-        'alcohol': {'mean': 10.5, 'std': 1.2},
-        'pH': {'mean': 3.2, 'std': 0.16},
-        'density': {'mean': 0.995, 'std': 0.003},
+        'age': {'mean': 54.4, 'std': 9.0},
+        'trestbps': {'mean': 131.6, 'std': 17.5},
+        'chol': {'mean': 246.3, 'std': 51.8},
+        'thalach': {'mean': 149.6, 'std': 22.9},
+        'oldpeak': {'mean': 1.04, 'std': 1.16},
     }
     for feature, stats in feature_stats.items():
         for stat_name, stat_value in stats.items():
@@ -246,8 +246,8 @@ def metrics_updater():
         'model_version': MODEL_VERSION,
         'framework': 'scikit-learn',
         'algorithm': 'RandomForestClassifier',
-        'dataset': 'wine_quality',
-        'n_classes': '3',
+        'dataset': 'heart_disease',
+        'n_classes': '2',
     })
     
     while True:
@@ -281,7 +281,7 @@ def main():
     port = 8001
     
     print(f"{'='*60}")
-    print(f"  PROMETHEUS EXPORTER - Wine Quality ML Model")
+    print(f"  PROMETHEUS EXPORTER - Heart Disease ML Model")
     print(f"{'='*60}")
     print(f"  Port: {port}")
     print(f"  Metrics endpoint: http://localhost:{port}/metrics")

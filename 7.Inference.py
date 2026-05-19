@@ -1,6 +1,6 @@
 """
 7.Inference.py
-FastAPI-based Inference Server untuk Wine Quality Model (Kriteria 4)
+FastAPI-based Inference Server untuk Heart Disease Model (Kriteria 4)
 
 Server ini menyediakan:
 - Endpoint /predict untuk melakukan prediksi
@@ -115,25 +115,26 @@ MODEL_VERSION_INFO = Info(
 # ============================================================
 # REQUEST/RESPONSE MODELS
 # ============================================================
-class WineFeatures(BaseModel):
-    """Input features untuk prediksi wine quality."""
-    fixed_acidity: float
-    volatile_acidity: float
-    citric_acid: float
-    residual_sugar: float
-    chlorides: float
-    free_sulfur_dioxide: float
-    total_sulfur_dioxide: float
-    density: float
-    pH: float
-    sulphates: float
-    alcohol: float
-    wine_type: int  # 0=red, 1=white
+class HeartFeatures(BaseModel):
+    """Input features untuk prediksi heart disease."""
+    age: float
+    sex: float  # 0=female, 1=male
+    cp: float  # chest pain type (0-3)
+    trestbps: float  # resting blood pressure
+    chol: float  # serum cholesterol
+    fbs: float  # fasting blood sugar > 120 mg/dl (0/1)
+    restecg: float  # resting ECG results (0-2)
+    thalach: float  # maximum heart rate achieved
+    exang: float  # exercise induced angina (0/1)
+    oldpeak: float  # ST depression induced by exercise
+    slope: float  # slope of peak exercise ST segment (0-2)
+    ca: float  # number of major vessels colored by fluoroscopy (0-3)
+    thal: float  # thalassemia (1=normal, 2=fixed defect, 3=reversible defect)
 
 
-class BatchWineFeatures(BaseModel):
+class BatchHeartFeatures(BaseModel):
     """Batch input untuk prediksi."""
-    instances: List[WineFeatures]
+    instances: List[HeartFeatures]
 
 
 class PredictionResponse(BaseModel):
@@ -157,10 +158,10 @@ model = None
 scaler = None
 encoders = None
 feature_names = None
-class_labels = ['low', 'medium', 'high']
+class_labels = ['no_disease', 'disease']
 start_time = time.time()
 
-MODEL_DIR = os.environ.get('MODEL_DIR', 'wine_quality_preprocessing')
+MODEL_DIR = os.environ.get('MODEL_DIR', 'heart_disease_preprocessing')
 MODEL_PATH = os.environ.get('MODEL_PATH', 'model.pkl')
 
 
@@ -183,8 +184,8 @@ async def lifespan(app: FastAPI):
             from sklearn.ensemble import RandomForestClassifier
             model = RandomForestClassifier(n_estimators=100, random_state=42)
             # Fit dengan data dummy
-            X_dummy = np.random.randn(100, 15)
-            y_dummy = np.random.choice([0, 1, 2], 100)
+            X_dummy = np.random.randn(100, 18)
+            y_dummy = np.random.choice([0, 1], 100)
             model.fit(X_dummy, y_dummy)
         
         # Load scaler
@@ -203,7 +204,7 @@ async def lifespan(app: FastAPI):
         MODEL_VERSION_INFO.info({
             'model_type': 'RandomForestClassifier',
             'version': '1.0',
-            'dataset': 'wine_quality',
+            'dataset': 'heart_disease',
             'framework': 'scikit-learn',
         })
         
@@ -222,8 +223,8 @@ async def lifespan(app: FastAPI):
 # FASTAPI APP
 # ============================================================
 app = FastAPI(
-    title="Wine Quality ML Inference API",
-    description="API untuk prediksi kualitas wine menggunakan model ML",
+    title="Heart Disease ML Inference API",
+    description="API untuk prediksi penyakit jantung menggunakan model ML",
     version="1.0.0",
     lifespan=lifespan
 )
@@ -233,7 +234,7 @@ app = FastAPI(
 async def root():
     """Root endpoint."""
     return {
-        "service": "Wine Quality ML Inference API",
+        "service": "Heart Disease ML Inference API",
         "version": "1.0.0",
         "status": "running",
         "endpoints": {
@@ -256,7 +257,7 @@ async def health_check():
 
 
 @app.post("/predict", response_model=PredictionResponse)
-async def predict(features: WineFeatures):
+async def predict(features: HeartFeatures):
     """Melakukan prediksi untuk satu instance."""
     ACTIVE_REQUESTS.inc()
     start = time.time()
@@ -270,15 +271,20 @@ async def predict(features: WineFeatures):
         feature_dict = features.model_dump()
         
         # Tambahkan engineered features
-        feature_dict['total_acidity'] = (
-            feature_dict['fixed_acidity'] + feature_dict['volatile_acidity']
+        feature_dict['heart_rate_reserve'] = (
+            feature_dict['thalach'] / max(220 - feature_dict['age'], 1)
         )
-        feature_dict['free_sulfur_ratio'] = (
-            feature_dict['free_sulfur_dioxide'] / 
-            max(feature_dict['total_sulfur_dioxide'], 1)
+        feature_dict['cholesterol_age_ratio'] = (
+            feature_dict['chol'] / max(feature_dict['age'], 1)
         )
-        feature_dict['alcohol_density_ratio'] = (
-            feature_dict['alcohol'] / max(feature_dict['density'], 0.001)
+        feature_dict['bp_chol_interaction'] = (
+            feature_dict['trestbps'] * feature_dict['chol'] / 10000
+        )
+        feature_dict['exercise_risk'] = (
+            feature_dict['oldpeak'] * (feature_dict['exang'] + 1)
+        )
+        feature_dict['age_sex_risk'] = (
+            feature_dict['age'] * (1 + feature_dict['sex'] * 0.2)
         )
         
         # Convert to array
@@ -328,7 +334,7 @@ async def predict(features: WineFeatures):
 
 
 @app.post("/predict/batch", response_model=BatchPredictionResponse)
-async def predict_batch(batch: BatchWineFeatures):
+async def predict_batch(batch: BatchHeartFeatures):
     """Melakukan prediksi untuk batch instances."""
     predictions = []
     for instance in batch.instances:
@@ -357,7 +363,7 @@ if __name__ == '__main__':
     import uvicorn
     
     print("=" * 60)
-    print("  WINE QUALITY ML INFERENCE SERVER")
+    print("  HEART DISEASE ML INFERENCE SERVER")
     print("=" * 60)
     print("  API:     http://localhost:8000")
     print("  Docs:    http://localhost:8000/docs")
